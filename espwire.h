@@ -2,6 +2,8 @@
 #define ESPWIRE_H
 
 #include "Arduino.h"
+#include "nvs_flash.h"
+#include "nvs.h"
 
 class espwire {
 public:
@@ -19,13 +21,15 @@ public:
 private:
   static void IRAM_ATTR handleInterrupt();
   void shiftOut64(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint64_t val);
+  void saveActiveWiresToNVS();
+  void loadActiveWiresFromNVS();
 
   int clearPin;
   int latchPin;
   int clockPin;
   int dataPin;
   int GPin;
-  int inputPin; // Renamed from pin1 to inputPin
+  int inputPin; 
   int selPins[4];
   int enb[4];
   uint64_t activeWires; // each bit in this variable represents a wire with 1 meaning current is passing through and 0 means it is connected to GND

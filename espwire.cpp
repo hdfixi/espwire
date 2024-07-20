@@ -20,6 +20,7 @@ void espwire::setSelectionPins(int pin1, int pin2, int pin3, int pin4, int enb1,
 
 void espwire::setWireSetActive(uint64_t activeWires) {
   this->activeWires = activeWires;
+  saveActiveWiresToNVS();
 }
 
 void espwire::begin() {
@@ -48,11 +49,22 @@ void espwire::begin() {
   ledcWrite(0, 240);
 
   exciteTPIC(activeWires);
-  
+
   for (int i = 0; i < 4; i++) {
     digitalWrite(selPins[i], LOW);
     digitalWrite(enb[i], HIGH); //initial no mux is selected 
   }
+
+  // Initialize NVS
+  esp_err_t err = nvs_flash_init();
+  if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    err = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(err);
+
+  // Load stored activeWires value
+  loadActiveWiresFromNVS();
 }
 
 void espwire::selectWire(uint16_t wireNumber) {
@@ -105,5 +117,30 @@ void espwire::shiftOut64(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, ui
     delayMicroseconds(1);
     digitalWrite(clockPin, LOW);
     delayMicroseconds(1);
+  }
+}
+
+void espwire::saveActiveWiresToNVS() {
+  nvs_handle_t my_handle;
+  esp_err_t err = nvs_open("storage", NVS_READWRITE, &my_handle);
+  if (err == ESP_OK) {
+    err = nvs_set_u64(my_handle, "activeWires", activeWires);
+    if (err == ESP_OK) {
+      nvs_commit(my_handle);
+    }
+    nvs_close(my_handle);
+  }
+}
+
+void espwire::loadActiveWiresFromNVS() {
+  nvs_handle_t my_handle;
+  esp_err_t err = nvs_open("storage", NVS_READONLY, &my_handle);
+  if (err == ESP_OK) {
+    uint64_t value = 0;
+    err = nvs_get_u64(my_handle, "activeWires", &value);
+    if (err == ESP_OK) {
+      activeWires = value;
+    }
+    nvs_close(my_handle);
   }
 }
